@@ -1,84 +1,116 @@
 import { useEffect, useState } from "react";
+import "./App.css";
 
 function App() {
   const [users, setUsers] = useState([]);
   const [name, setName] = useState("");
   const [age, setAge] = useState("");
+  const [editingId, setEditingId] = useState(null);
 
-  // Fetch all users
+  const API = "http://localhost:8080/users";
+
+  // Fetch Users
   const fetchUsers = () => {
-    fetch("http://localhost:8080/users")
+    fetch(API)
       .then((res) => res.json())
       .then((data) => setUsers(data))
       .catch((err) => console.log(err));
   };
 
-  // Run once when page loads
   useEffect(() => {
     fetchUsers();
   }, []);
 
-  // Create user
-  const createUser = () => {
-    fetch("http://localhost:8080/users", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        name: name,
-        age: Number(age),
-      }),
-    })
-      .then((res) => res.json())
-      .then(() => {
-        setName("");
-        setAge("");
+  const handleSubmit = () => {
+    if (!name || !age) return alert("Fill all fields");
+
+    if (editingId) {
+      fetch(`${API}/${editingId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, age: Number(age) }),
+      }).then(() => {
+        resetForm();
         fetchUsers();
       });
+    } else {
+      fetch(API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, age: Number(age) }),
+      }).then(() => {
+        resetForm();
+        fetchUsers();
+      });
+    }
   };
 
-  // Delete user
   const deleteUser = (id) => {
-    fetch(`http://localhost:8080/users/${id}`, {
-      method: "DELETE",
-    }).then(() => fetchUsers());
+    fetch(`${API}/${id}`, { method: "DELETE" })
+      .then(() => fetchUsers());
+  };
+
+  const editUser = (user) => {
+    setEditingId(user.id);
+    setName(user.name);
+    setAge(user.age);
+  };
+
+  const resetForm = () => {
+    setEditingId(null);
+    setName("");
+    setAge("");
   };
 
   return (
-    <div style={{ padding: "30px" }}>
-      <h1>User Management</h1>
+    <div className="wrapper">
+      <div className="container">
+        <h1>User Management</h1>
 
-      <h2>Add User</h2>
-      <input
-        type="text"
-        placeholder="Enter name"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-      />
-      <input
-        type="number"
-        placeholder="Enter age"
-        value={age}
-        onChange={(e) => setAge(e.target.value)}
-      />
-      <button onClick={createUser}>Add User</button>
-
-      <h2>User List</h2>
-
-      {users.map((user) => (
-        <div key={user.id} style={{ marginBottom: "10px" }}>
-          <span>
-            {user.name} - {user.age}
-          </span>
-          <button
-            onClick={() => deleteUser(user.id)}
-            style={{ marginLeft: "10px" }}
-          >
-            Delete
+        <div className="form">
+          <input
+            type="text"
+            placeholder="Enter name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+          <input
+            type="number"
+            placeholder="Enter age"
+            value={age}
+            onChange={(e) => setAge(e.target.value)}
+          />
+          <button onClick={handleSubmit}>
+            {editingId ? "Update User" : "Add User"}
           </button>
         </div>
-      ))}
+
+        <h2>User List</h2>
+
+        <div className="card-container">
+          {users.length === 0 ? (
+            <p>No users found</p>
+          ) : (
+            users.map((user) => (
+              <div className="card" key={user.id}>
+                <h3>{user.name}</h3>
+                <p>Age: {user.age}</p>
+                <div className="buttons">
+                  <button className="edit" onClick={() => editUser(user)}>
+                    Edit
+                  </button>
+                  <button
+                    className="delete"
+                    onClick={() => deleteUser(user.id)}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
     </div>
   );
 }
